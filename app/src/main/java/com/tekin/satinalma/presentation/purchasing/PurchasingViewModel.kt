@@ -1,17 +1,19 @@
 /*
  * PurchasingViewModel.kt
  * Satınalma ekranları ViewModel'i.
- * Talep listesi, yeni talep oluşturma ve mevcut talebi güncelleme işlemlerini yönetir.
+ * Talep listesi, yeni talep oluşturma, güncelleme ve iptal işlemlerini yönetir.
  */
 package com.tekin.satinalma.presentation.purchasing
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tekin.satinalma.domain.model.AppNotification
 import com.tekin.satinalma.domain.model.PurchaseRequest
 import com.tekin.satinalma.domain.model.UrgencyLevel
+import com.tekin.satinalma.domain.model.User
+import com.tekin.satinalma.domain.model.UserSession
 import com.tekin.satinalma.domain.usecase.CreatePurchaseUseCase
 import com.tekin.satinalma.domain.usecase.GetPurchaseRequestsUseCase
-import com.tekin.satinalma.domain.usecase.UpdateStatusUseCase
 import com.tekin.satinalma.domain.repository.PurchaseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,7 +57,8 @@ data class PurchasingFormState(
 class PurchasingViewModel @Inject constructor(
     private val getPurchaseRequestsUseCase: GetPurchaseRequestsUseCase,
     private val createPurchaseUseCase: CreatePurchaseUseCase,
-    private val repository: PurchaseRepository
+    private val repository: PurchaseRepository,
+    private val userSession: UserSession
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PurchasingUiState())
@@ -64,8 +67,29 @@ class PurchasingViewModel @Inject constructor(
     private val _formState = MutableStateFlow(PurchasingFormState())
     val formState: StateFlow<PurchasingFormState> = _formState.asStateFlow()
 
+    private val _notifications = MutableStateFlow(emptyList<AppNotification>())
+
     init {
         loadRequests()
+        loadNotifications()
+    }
+
+    private fun loadNotifications() {
+        val userId = userSession.getUser()?.id ?: return
+        repository.getNotifications(userId)
+            .onEach { notifs -> _notifications.value = notifs }
+            .launchIn(viewModelScope)
+    }
+
+    /** Oturum açmış kullanıcıyı döner */
+    fun getCurrentUser(): User? = userSession.getUser()
+
+    /** Bildirim listesini döner */
+    fun getNotifications(): List<AppNotification> = _notifications.value
+
+    /** Bildirimi okundu işaretler */
+    fun markNotificationRead(notificationId: String) {
+        viewModelScope.launch { repository.markNotificationRead(notificationId) }
     }
 
     private fun loadRequests() {
@@ -117,6 +141,7 @@ class PurchasingViewModel @Inject constructor(
     /** Yeni talep kaydeder veya mevcut talebi günceller */
     fun saveRequest(existingRequestId: String? = null) {
         val form = _formState.value
+        val currentUserId = userSession.getUser()?.id ?: "1"
 
         if (form.itemToPurchase.isBlank()) {
             _formState.update { it.copy(errorMessage = "Alım yapılacak ürün alanı zorunludur") }
@@ -142,7 +167,7 @@ class PurchasingViewModel @Inject constructor(
                 urgencyLevel = form.urgencyLevel,
                 purchaseDate = form.purchaseDate,
                 notes = form.notes,
-                assignedPurchasingStaffId = "staff-001"
+                assignedPurchasingStaffId = currentUserId
             )
 
             if (existingRequestId == null || existingRequestId == "new") {
@@ -152,6 +177,15 @@ class PurchasingViewModel @Inject constructor(
             }
 
             _formState.update { it.copy(isSaving = false, saveSuccess = true) }
+        }
+    }
+
+    /** Talebi iptal eder */
+    fun cancelRequest(requestId: String, reason: String?) {
+        val currentUserId = userSession.getUser()?.id ?: "1"
+        viewModelScope.launch {
+            repository.cancelRequest(requestId, reason, currentUserId)
+            _uiState.update { it.copy(successMessage = "Talep iptal edildi") }
         }
     }
 

@@ -6,6 +6,7 @@
 package com.tekin.satinalma.presentation.components
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.tekin.satinalma.presentation.theme.Error
 import com.tekin.satinalma.presentation.theme.OnPrimary
 import com.tekin.satinalma.presentation.theme.SatinalmaTheme
+import com.tekin.satinalma.presentation.theme.Warning
 
 /**
  * Buton varyant türleri
@@ -34,7 +36,8 @@ import com.tekin.satinalma.presentation.theme.SatinalmaTheme
 enum class ButtonVariant {
     PRIMARY,
     SECONDARY,
-    DANGER
+    DANGER,
+    WARNING
 }
 
 /**
@@ -90,6 +93,21 @@ fun AppButton(
                 enabled = enabled && !isLoading,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Error,
+                    contentColor = Color.White
+                ),
+                contentPadding = PaddingValues(vertical = 14.dp)
+            ) {
+                ButtonContent(text = text, isLoading = isLoading, textColor = Color.White)
+            }
+        }
+
+        ButtonVariant.WARNING -> {
+            Button(
+                onClick = onClick,
+                modifier = modifier.fillMaxWidth(),
+                enabled = enabled && !isLoading,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Warning,
                     contentColor = Color.White
                 ),
                 contentPadding = PaddingValues(vertical = 14.dp)
