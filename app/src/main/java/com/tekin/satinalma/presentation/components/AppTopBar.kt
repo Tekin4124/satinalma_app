@@ -12,18 +12,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -48,7 +45,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,7 +64,6 @@ import java.util.Locale
  * Gradient arka plan, kullanıcı avatarı ve bildirim ikonu içerir.
  *
  * @param title Ekran başlığı
- * @param titleIcon Başlık yanında görünecek ikon
  * @param currentUser Oturum açmış kullanıcı
  * @param notifications Kullanıcıya ait bildirim listesi
  * @param onLogout Çıkış yapma geri çağrısı
@@ -78,7 +73,6 @@ import java.util.Locale
 @Composable
 fun AppTopBar(
     title: String,
-    titleIcon: ImageVector = Icons.Default.ShoppingCart,
     currentUser: User?,
     notifications: List<AppNotification> = emptyList(),
     onLogout: () -> Unit,
@@ -106,13 +100,6 @@ fun AppTopBar(
             ),
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = titleIcon,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = Color.White
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
@@ -165,22 +152,6 @@ fun AppTopBar(
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     fontSize = 12.sp
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Column {
-                                Text(
-                                    text = currentUser.fullName,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White,
-                                    maxLines = 1
-                                )
-                                Text(
-                                    text = currentUser.role.displayName,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White.copy(alpha = 0.75f),
-                                    maxLines = 1
                                 )
                             }
                         }

@@ -5,16 +5,19 @@
  */
 package com.tekin.satinalma.presentation.components
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -60,8 +63,8 @@ fun RequestCard(
     onCancelClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    // Aciliyet düzeyine göre kart kenar rengi
-    val borderColor = when (request.urgencyLevel) {
+    // Aciliyet düzeyine göre sol şerit rengi
+    val accentColor = when (request.urgencyLevel) {
         UrgencyLevel.URGENT -> UrgencyUrgent
         UrgencyLevel.HIGH -> UrgencyHigh
         UrgencyLevel.NORMAL -> UrgencyNormal
@@ -76,19 +79,26 @@ fun RequestCard(
         modifier = modifier
             .fillMaxWidth()
             .clickable(enabled = !isCancelled, onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = BorderStroke(width = 2.dp, color = borderColor.copy(alpha = cardAlpha)),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = cardAlpha)
+            containerColor = Color.White.copy(alpha = cardAlpha)
         )
     ) {
         Box {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
+            Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                // Sol kenar vurgu şeridi
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .background(accentColor.copy(alpha = cardAlpha))
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
                 // Üst satır: Talep numarası ve durum rozeti
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -171,6 +181,7 @@ fun RequestCard(
                         )
                     }
                 }
+            }
             }
 
             // "YENİ" badge'i — sağ üst köşede

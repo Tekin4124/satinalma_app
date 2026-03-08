@@ -24,7 +24,7 @@
     <string name="role_driver">Şoför</string>
 
     <!-- Satınalma Ekranı -->
-    <string name="purchasing_title">Satınalma Talepleri</string>
+    <string name="purchasing_title">Talepler</string>
     <string name="purchasing_new_request">Yeni Talep Oluştur</string>
     <string name="purchasing_detail_title">Talep Detayı</string>
     <string name="purchasing_create_title">Yeni Talep</string>
@@ -61,14 +61,14 @@
     <string name="status_cancelled">İptal Edildi</string>
 
     <!-- Sevkiyat Ofis Ekranı -->
-    <string name="logistics_title">Sevkiyat Ofis Görünümü</string>
+    <string name="logistics_title">Sevkiyat</string>
     <string name="logistics_detail_title">Talep Detayı (Ofis)</string>
     <string name="logistics_assign_plate">Plaka Ata</string>
     <string name="logistics_redirect">Yönlendir</string>
     <string name="logistics_save_changes">Değişiklikleri Kaydet</string>
 
     <!-- Şoför Ekranı -->
-    <string name="driver_title">Şoför Görünümü</string>
+    <string name="driver_title">Şoför</string>
     <string name="driver_detail_title">Talep Detayı (Şoför)</string>
     <string name="driver_take_over">Üstüne Al</string>
     <string name="driver_update_status">Durumu Güncelle</string>

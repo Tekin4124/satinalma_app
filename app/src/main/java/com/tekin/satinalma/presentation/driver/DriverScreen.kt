@@ -21,7 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -86,7 +85,6 @@ fun DriverScreen(
         topBar = {
             AppTopBar(
                 title = stringResource(R.string.driver_title),
-                titleIcon = Icons.Default.DirectionsCar,
                 currentUser = viewModel.getCurrentUser(),
                 notifications = viewModel.getNotifications(),
                 onLogout = onLogout,
