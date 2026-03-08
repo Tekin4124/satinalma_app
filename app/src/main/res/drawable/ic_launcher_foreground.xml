@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ic_launcher_foreground.xml
+    Uygulama ikon ön plan vektörü — alışveriş sepeti ve ok simgesi
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,30 C41,30 30,41 30,54 C30,67 41,78 54,78 C67,78 78,67 78,54 C78,41 67,30 54,30 Z M54,38 C62.8,38 70,45.2 70,54 C70,62.8 62.8,70 54,70 C45.2,70 38,62.8 38,54 C38,45.2 45.2,38 54,38 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M47,50 L47,58 L61,58 L61,50 L47,50 Z M49,52 L59,52 L59,56 L49,56 L49,52 Z" />
+</vector>
