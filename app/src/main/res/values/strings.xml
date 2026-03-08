@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    strings.xml
+    Tüm Türkçe kullanıcı arayüzü metinlerinin tanımlandığı kaynak dosyası
+-->
+<resources>
+    <!-- Uygulama Genel -->
+    <string name="app_name">Satınalma Yönetim</string>
+    <string name="app_subtitle">Şirket İçi Satınalma ve Sevkiyat Sistemi</string>
+
+    <!-- Giriş Ekranı -->
+    <string name="login_title">Giriş Yap</string>
+    <string name="login_username">Kullanıcı Adı</string>
+    <string name="login_password">Şifre</string>
+    <string name="login_role">Rol Seçin</string>
+    <string name="login_button">Giriş Yap</string>
+    <string name="login_loading">Giriş yapılıyor…</string>
+    <string name="login_error_empty_fields">Kullanıcı adı ve şifre boş bırakılamaz</string>
+    <string name="login_error_select_role">Lütfen bir rol seçin</string>
+
+    <!-- Roller -->
+    <string name="role_purchasing">Satınalma Personeli</string>
+    <string name="role_logistics_office">Sevkiyat Ofis</string>
+    <string name="role_driver">Şoför</string>
+
+    <!-- Satınalma Ekranı -->
+    <string name="purchasing_title">Satınalma Talepleri</string>
+    <string name="purchasing_new_request">Yeni Talep Oluştur</string>
+    <string name="purchasing_detail_title">Talep Detayı</string>
+    <string name="purchasing_create_title">Yeni Talep</string>
+    <string name="purchasing_save">Kaydet</string>
+    <string name="purchasing_update">Güncelle</string>
+    <string name="purchasing_no_requests">Henüz talep bulunmuyor</string>
+
+    <!-- Form Alanları -->
+    <string name="field_request_number">Talep Numarası</string>
+    <string name="field_item_to_purchase">Alım Yapılacak Ürün</string>
+    <string name="field_company_name">Firma Adı</string>
+    <string name="field_company_address">Firma Adresi</string>
+    <string name="field_contact_number">İlgili İletişim Numarası</string>
+    <string name="field_product_dimensions">Ürün Ölçü Bilgisi</string>
+    <string name="field_product_weight">Ürün Ağırlık Bilgisi</string>
+    <string name="field_urgency_level">Aciliyet Durumu</string>
+    <string name="field_purchase_date">Alım Yapılacak Tarih</string>
+    <string name="field_notes">Notlar</string>
+    <string name="field_license_plate">Plaka Bilgisi</string>
+    <string name="field_material_status">Malzeme Alım Durumu</string>
+    <string name="field_redirect_request">Yönlendirilecek Talep</string>
+
+    <!-- Aciliyet Seviyeleri -->
+    <string name="urgency_low">Düşük</string>
+    <string name="urgency_normal">Normal</string>
+    <string name="urgency_high">Yüksek</string>
+    <string name="urgency_urgent">Acil</string>
+
+    <!-- Malzeme Durumları -->
+    <string name="status_pending">Beklemede</string>
+    <string name="status_in_progress">Devam Ediyor</string>
+    <string name="status_purchased">Satın Alındı</string>
+    <string name="status_delivered">Teslim Edildi</string>
+    <string name="status_cancelled">İptal Edildi</string>
+
+    <!-- Sevkiyat Ofis Ekranı -->
+    <string name="logistics_title">Sevkiyat Ofis Görünümü</string>
+    <string name="logistics_detail_title">Talep Detayı (Ofis)</string>
+    <string name="logistics_assign_plate">Plaka Ata</string>
+    <string name="logistics_redirect">Yönlendir</string>
+    <string name="logistics_save_changes">Değişiklikleri Kaydet</string>
+
+    <!-- Şoför Ekranı -->
+    <string name="driver_title">Şoför Görünümü</string>
+    <string name="driver_detail_title">Talep Detayı (Şoför)</string>
+    <string name="driver_take_over">Üstüne Al</string>
+    <string name="driver_update_status">Durumu Güncelle</string>
+    <string name="driver_assigned_to_me">Bana Atanan Talepler</string>
+    <string name="driver_unassigned">Atanmamış Talepler</string>
+    <string name="driver_taken_over_success">Talep başarıyla üstlenildi</string>
+
+    <!-- Genel UI -->
+    <string name="back">Geri</string>
+    <string name="cancel">İptal</string>
+    <string name="confirm">Onayla</string>
+    <string name="loading">Yükleniyor…</string>
+    <string name="error_generic">Bir hata oluştu. Lütfen tekrar deneyin.</string>
+    <string name="success_saved">Kayıt başarıyla gerçekleştirildi</string>
+    <string name="success_updated">Güncelleme başarıyla gerçekleştirildi</string>
+    <string name="request_number_prefix">Talep #</string>
+    <string name="created_at">Oluşturulma: </string>
+    <string name="no_date_selected">Tarih seçilmedi</string>
+    <string name="select_date">Tarih Seç</string>
+    <string name="logout">Çıkış Yap</string>
+</resources>
