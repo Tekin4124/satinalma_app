@@ -1,10 +1,12 @@
 /*
  * LogisticsScreen.kt
  * Sevkiyat ofis ana liste ekranı ve talep detay ekranı.
- * Talep alanları büyük bölümü salt okunur; plaka girişi düzenlenebilir.
+ * Şoför seçimi dropdown ile yapılır; plaka şoförden otomatik alınır.
+ * İtiraz durumu banner olarak gösterilir.
  */
 package com.tekin.satinalma.presentation.logistics
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,22 +23,29 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -49,11 +58,15 @@ import com.tekin.satinalma.R
 import com.tekin.satinalma.domain.model.MaterialStatus
 import com.tekin.satinalma.domain.model.PurchaseRequest
 import com.tekin.satinalma.domain.model.UrgencyLevel
+import com.tekin.satinalma.domain.model.User
+import com.tekin.satinalma.domain.model.UserRole
 import com.tekin.satinalma.presentation.components.AppButton
 import com.tekin.satinalma.presentation.components.AppTextField
+import com.tekin.satinalma.presentation.components.ButtonVariant
 import com.tekin.satinalma.presentation.components.RequestCard
 import com.tekin.satinalma.presentation.components.StatusBadge
 import com.tekin.satinalma.presentation.components.UrgencyBadge
+import com.tekin.satinalma.presentation.driver.UserInfoAction
 import com.tekin.satinalma.presentation.theme.SatinalmaTheme
 
 /**
@@ -61,6 +74,8 @@ import com.tekin.satinalma.presentation.theme.SatinalmaTheme
  */
 @Composable
 fun LogisticsScreen(
+    currentUserFullName: String,
+    currentUserRole: String,
     onRequestClick: (String) -> Unit,
     onLogout: () -> Unit,
     viewModel: LogisticsViewModel = hiltViewModel()
@@ -70,6 +85,8 @@ fun LogisticsScreen(
     LogisticsListContent(
         requests = uiState.requests,
         isLoading = uiState.isLoading,
+        currentUserFullName = currentUserFullName,
+        currentUserRole = currentUserRole,
         onRequestClick = onRequestClick,
         onLogout = onLogout
     )
@@ -80,6 +97,8 @@ fun LogisticsScreen(
 private fun LogisticsListContent(
     requests: List<PurchaseRequest>,
     isLoading: Boolean,
+    currentUserFullName: String,
+    currentUserRole: String,
     onRequestClick: (String) -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
@@ -100,12 +119,11 @@ private fun LogisticsListContent(
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    IconButton(onClick = onLogout) {
-                        Icon(
-                            imageVector = Icons.Default.ExitToApp,
-                            contentDescription = stringResource(R.string.logout)
-                        )
-                    }
+                    UserInfoAction(
+                        fullName = currentUserFullName,
+                        roleName = currentUserRole,
+                        onLogout = onLogout
+                    )
                 }
             )
         }
@@ -178,10 +196,12 @@ fun LogisticsDetailScreen(
         formState.request?.let { request ->
             LogisticsDetailContent(
                 request = request,
-                editableLicensePlate = formState.editableLicensePlate,
+                drivers = formState.drivers,
+                selectedDriver = formState.selectedDriver,
                 isSaving = formState.isSaving,
-                onLicensePlateChange = viewModel::onLicensePlateChange,
-                onSaveLicensePlate = viewModel::saveLicensePlate,
+                onDriverSelected = viewModel::onDriverSelected,
+                onAssignDriver = viewModel::assignDriver,
+                onCancelRequest = viewModel::cancelRequest,
                 modifier = Modifier.padding(paddingValues)
             )
         }
@@ -214,15 +234,67 @@ private fun LogisticsDetailTopBar(onNavigateBack: () -> Unit) {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LogisticsDetailContent(
     request: PurchaseRequest,
-    editableLicensePlate: String,
+    drivers: List<User>,
+    selectedDriver: User?,
     isSaving: Boolean,
-    onLicensePlateChange: (String) -> Unit,
-    onSaveLicensePlate: () -> Unit,
+    onDriverSelected: (User) -> Unit,
+    onAssignDriver: () -> Unit,
+    onCancelRequest: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var driverDropdownExpanded by remember { mutableStateOf(false) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var cancelReasonText by remember { mutableStateOf("") }
+    val isCancelled = request.materialStatus == MaterialStatus.CANCELLED
+
+    // İptal dialog'u
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false },
+            title = { Text(stringResource(R.string.logistics_cancel_title)) },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.logistics_cancel_confirm),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    OutlinedTextField(
+                        value = cancelReasonText,
+                        onValueChange = { cancelReasonText = it },
+                        label = { Text(stringResource(R.string.cancel_reason)) },
+                        minLines = 2,
+                        maxLines = 4,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onCancelRequest(cancelReasonText)
+                        showCancelDialog = false
+                        cancelReasonText = ""
+                    }
+                ) {
+                    Text(
+                        text = stringResource(R.string.confirm),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -238,7 +310,7 @@ private fun LogisticsDetailContent(
             readOnly = true
         )
 
-        // Malzeme durumu (salt okunur)
+        // Malzeme durumu
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -251,7 +323,7 @@ private fun LogisticsDetailContent(
             StatusBadge(status = request.materialStatus)
         }
 
-        // Aciliyet durumu (salt okunur rozet)
+        // Aciliyet
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -262,6 +334,26 @@ private fun LogisticsDetailContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             UrgencyBadge(urgencyLevel = request.urgencyLevel)
+        }
+
+        // İtiraz uyarı banner'ı
+        if (request.hasObjection) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                        shape = MaterialTheme.shapes.small
+                    )
+                    .padding(12.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = "⚠️ ${stringResource(R.string.logistics_objection_banner)} ${request.objectionReason ?: ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
 
         HorizontalDivider()
@@ -321,24 +413,71 @@ private fun LogisticsDetailContent(
                 maxLines = 3
             )
         }
+        // Atanmış plaka gösterimi
+        if (request.licensePlate.isNotBlank()) {
+            AppTextField(
+                label = stringResource(R.string.field_license_plate),
+                value = request.licensePlate,
+                onValueChange = {},
+                readOnly = true
+            )
+        }
 
         HorizontalDivider()
 
-        // Plaka girişi — düzenlenebilir
-        AppTextField(
-            label = stringResource(R.string.field_license_plate),
-            value = editableLicensePlate,
-            onValueChange = onLicensePlateChange,
-            placeholder = "34 ABC 123"
-        )
+        // Şoför seçimi dropdown — iptal edilmemiş taleplerde aktif
+        if (!isCancelled) {
+            ExposedDropdownMenuBox(
+                expanded = driverDropdownExpanded,
+                onExpandedChange = { driverDropdownExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedDriver?.let { "${it.fullName} — ${it.licensePlate ?: "-"}" }
+                        ?: stringResource(R.string.logistics_select_driver),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.logistics_assign_driver)) },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = driverDropdownExpanded)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = driverDropdownExpanded,
+                    onDismissRequest = { driverDropdownExpanded = false }
+                ) {
+                    drivers.forEach { driver ->
+                        DropdownMenuItem(
+                            text = { Text("${driver.fullName} — ${driver.licensePlate ?: "-"}") },
+                            onClick = {
+                                onDriverSelected(driver)
+                                driverDropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-        AppButton(
-            text = stringResource(R.string.logistics_save_changes),
-            onClick = onSaveLicensePlate,
-            isLoading = isSaving
-        )
+            AppButton(
+                text = stringResource(R.string.logistics_assign_driver_button),
+                onClick = onAssignDriver,
+                isLoading = isSaving
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // İşi İptal Et butonu
+            AppButton(
+                text = stringResource(R.string.logistics_cancel_job),
+                onClick = { showCancelDialog = true },
+                variant = ButtonVariant.DANGER,
+                isLoading = false
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
     }
@@ -356,12 +495,18 @@ private fun LogisticsDetailScreenPreview() {
                 companyAddress = "Organize Sanayi Bölgesi, Ankara",
                 urgencyLevel = UrgencyLevel.HIGH,
                 materialStatus = MaterialStatus.IN_PROGRESS,
-                licensePlate = "34 ABC 123"
+                licensePlate = "34 ABC 123",
+                hasObjection = true,
+                objectionReason = "Araç uygun değil"
             ),
-            editableLicensePlate = "34 ABC 123",
+            drivers = listOf(
+                User("3", "ahmet", "Ahmet Yılmaz", UserRole.DRIVER, "34 ABC 123")
+            ),
+            selectedDriver = User("3", "ahmet", "Ahmet Yılmaz", UserRole.DRIVER, "34 ABC 123"),
             isSaving = false,
-            onLicensePlateChange = {},
-            onSaveLicensePlate = {}
+            onDriverSelected = {},
+            onAssignDriver = {},
+            onCancelRequest = {}
         )
     }
 }

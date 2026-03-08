@@ -9,7 +9,9 @@ package com.tekin.satinalma.data.repository
 import com.tekin.satinalma.domain.model.MaterialStatus
 import com.tekin.satinalma.domain.model.PurchaseRequest
 import com.tekin.satinalma.domain.model.UrgencyLevel
+import com.tekin.satinalma.domain.model.User
 import com.tekin.satinalma.domain.repository.PurchaseRepository
+import com.tekin.satinalma.util.Constants
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -53,12 +55,13 @@ class PurchaseRepositoryImpl @Inject constructor() : PurchaseRepository {
         }
     }
 
-    override suspend fun assignDriver(requestId: String, driverId: String) {
+    override suspend fun assignDriver(requestId: String, driverId: String, licensePlate: String) {
         _requests.update { current ->
             current.map { request ->
                 if (request.id == requestId) {
                     request.copy(
                         assignedDriverId = driverId,
+                        licensePlate = licensePlate,
                         materialStatus = MaterialStatus.IN_PROGRESS,
                         updatedAt = System.currentTimeMillis()
                     )
@@ -69,16 +72,42 @@ class PurchaseRepositoryImpl @Inject constructor() : PurchaseRepository {
         }
     }
 
-    override suspend fun updateLicensePlate(requestId: String, plate: String) {
+    override suspend fun cancelRequest(requestId: String, reason: String?, cancelledBy: String) {
         _requests.update { current ->
             current.map { request ->
                 if (request.id == requestId) {
-                    request.copy(licensePlate = plate, updatedAt = System.currentTimeMillis())
+                    request.copy(
+                        materialStatus = MaterialStatus.CANCELLED,
+                        cancellationReason = reason,
+                        cancelledBy = cancelledBy,
+                        updatedAt = System.currentTimeMillis()
+                    )
                 } else {
                     request
                 }
             }
         }
+    }
+
+    override suspend fun submitObjection(requestId: String, driverId: String, reason: String) {
+        _requests.update { current ->
+            current.map { request ->
+                if (request.id == requestId) {
+                    request.copy(
+                        hasObjection = true,
+                        objectionReason = reason,
+                        objectionBy = driverId,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                } else {
+                    request
+                }
+            }
+        }
+    }
+
+    override suspend fun getDrivers(): List<User> {
+        return Constants.MockUserData.USERS.filter { it.role == com.tekin.satinalma.domain.model.UserRole.DRIVER }
     }
 
     /** Test ve demo amaçlı başlangıç verileri — gerçek şirket verisi kullanılmamıştır */

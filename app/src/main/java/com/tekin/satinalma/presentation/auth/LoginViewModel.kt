@@ -1,7 +1,7 @@
 /*
  * LoginViewModel.kt
  * Giriş ekranı ViewModel'i.
- * Kullanıcı adı, şifre ve rol doğrulaması yapılır; giriş başarılıysa kullanıcı objesi döndürülür.
+ * Mock kullanıcı listesinden kimlik doğrulama yapılır; başarılıysa oturum açılır.
  */
 package com.tekin.satinalma.presentation.auth
 
@@ -9,6 +9,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tekin.satinalma.domain.model.User
 import com.tekin.satinalma.domain.model.UserRole
+import com.tekin.satinalma.util.Constants
+import com.tekin.satinalma.util.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,10 +31,12 @@ data class LoginUiState(
 )
 
 /**
- * Giriş ekranı ViewModel'i — kullanıcı doğrulama ve yönlendirme mantığı
+ * Giriş ekranı ViewModel'i — kullanıcı doğrulama ve oturum yönetimi
  */
 @HiltViewModel
-class LoginViewModel @Inject constructor() : ViewModel() {
+class LoginViewModel @Inject constructor(
+    private val sessionManager: SessionManager
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
@@ -49,17 +53,15 @@ class LoginViewModel @Inject constructor() : ViewModel() {
         _uiState.update { it.copy(selectedRole = role, errorMessage = null) }
     }
 
-    /** Giriş işlemini başlatır — test modunda her kullanıcı adı/şifre kabul edilir */
+    /** Giriş işlemini başlatır — mock kullanıcı listesinden doğrulama yapar */
     fun login() {
         val state = _uiState.value
 
-        // Boş alan doğrulama
         if (state.username.isBlank() || state.password.isBlank()) {
             _uiState.update { it.copy(errorMessage = "Kullanıcı adı ve şifre boş bırakılamaz") }
             return
         }
 
-        // Rol seçimi doğrulama
         if (state.selectedRole == null) {
             _uiState.update { it.copy(errorMessage = "Lütfen bir rol seçin") }
             return
@@ -68,16 +70,24 @@ class LoginViewModel @Inject constructor() : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            // Test modu: simüle edilmiş ağ gecikmesi
+            // Simüle edilmiş ağ gecikmesi
             delay(800)
 
-            val user = User(
-                id = "user-${state.username.lowercase()}",
-                username = state.username,
-                fullName = state.username,
-                role = state.selectedRole
-            )
+            // Mock kullanıcı listesinden kullanıcı bul; bulunamazsa yeni oluştur
+            val mockUser = Constants.MockUserData.findByUsername(state.username)
+            val user = if (mockUser != null && mockUser.role == state.selectedRole) {
+                mockUser
+            } else {
+                // Test modunda: herhangi bir kullanıcı adı + seçilen rol ile giriş
+                User(
+                    id = "user-${state.username.lowercase()}",
+                    username = state.username,
+                    fullName = state.username,
+                    role = state.selectedRole
+                )
+            }
 
+            sessionManager.setUser(user)
             _uiState.update { it.copy(isLoading = false, loggedInUser = user) }
         }
     }

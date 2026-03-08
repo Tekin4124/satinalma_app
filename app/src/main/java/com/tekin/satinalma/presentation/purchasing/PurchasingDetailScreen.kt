@@ -2,6 +2,7 @@
  * PurchasingDetailScreen.kt
  * Satınalma personeli talep detay/form ekranı.
  * Yeni talep oluşturma veya mevcut talebi güncelleme formu sunar.
+ * Mevcut talepler iptal edilebilir.
  */
 package com.tekin.satinalma.presentation.purchasing
 
@@ -17,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -30,6 +32,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -51,16 +54,13 @@ import com.tekin.satinalma.domain.model.MaterialStatus
 import com.tekin.satinalma.domain.model.UrgencyLevel
 import com.tekin.satinalma.presentation.components.AppButton
 import com.tekin.satinalma.presentation.components.AppTextField
+import com.tekin.satinalma.presentation.components.ButtonVariant
 import com.tekin.satinalma.presentation.components.StatusBadge
 import com.tekin.satinalma.presentation.theme.SatinalmaTheme
 import com.tekin.satinalma.util.Constants
 
 /**
  * Satınalma personeli talep detay/form ekranı
- *
- * @param requestId Düzenlenecek talep ID'si ("new" ise yeni talep)
- * @param onNavigateBack Geri dönme geri çağrısı
- * @param viewModel ViewModel
  */
 @Composable
 fun PurchasingDetailScreen(
@@ -73,12 +73,10 @@ fun PurchasingDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val isNewRequest = requestId == Constants.NEW_REQUEST_ID
 
-    // Mevcut talebi forma yükle
     LaunchedEffect(requestId) {
         viewModel.loadRequestForEdit(requestId)
     }
 
-    // Kayıt başarılıysa geri dön
     LaunchedEffect(formState.saveSuccess) {
         if (formState.saveSuccess) {
             snackbarHostState.showSnackbar(
@@ -89,13 +87,22 @@ fun PurchasingDetailScreen(
         }
     }
 
-    // Hata varsa göster
+    LaunchedEffect(formState.cancelSuccess) {
+        if (formState.cancelSuccess) {
+            snackbarHostState.showSnackbar("Talep iptal edildi")
+            viewModel.clearFormMessages()
+            onNavigateBack()
+        }
+    }
+
     LaunchedEffect(formState.errorMessage) {
         formState.errorMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearFormMessages()
         }
     }
+
+    val currentRequest = uiState.requests.find { it.id == requestId }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -110,7 +117,8 @@ fun PurchasingDetailScreen(
             formState = formState,
             isNewRequest = isNewRequest,
             requestId = if (isNewRequest) null else requestId,
-            currentStatus = uiState.requests.find { it.id == requestId }?.materialStatus,
+            currentStatus = currentRequest?.materialStatus,
+            isCancelled = currentRequest?.materialStatus == MaterialStatus.CANCELLED,
             onItemToPurchaseChange = viewModel::onItemToPurchaseChange,
             onCompanyNameChange = viewModel::onCompanyNameChange,
             onCompanyAddressChange = viewModel::onCompanyAddressChange,
@@ -121,6 +129,7 @@ fun PurchasingDetailScreen(
             onPurchaseDateChange = viewModel::onPurchaseDateChange,
             onNotesChange = viewModel::onNotesChange,
             onSave = { viewModel.saveRequest(if (isNewRequest) null else requestId) },
+            onCancelRequest = if (!isNewRequest) { reason -> viewModel.cancelRequest(requestId, reason) } else null,
             modifier = Modifier.padding(paddingValues)
         )
     }
@@ -166,6 +175,7 @@ private fun PurchasingDetailContent(
     isNewRequest: Boolean,
     requestId: String?,
     currentStatus: MaterialStatus?,
+    isCancelled: Boolean,
     onItemToPurchaseChange: (String) -> Unit,
     onCompanyNameChange: (String) -> Unit,
     onCompanyAddressChange: (String) -> Unit,
@@ -176,9 +186,56 @@ private fun PurchasingDetailContent(
     onPurchaseDateChange: (String) -> Unit,
     onNotesChange: (String) -> Unit,
     onSave: () -> Unit,
+    onCancelRequest: ((String) -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     var urgencyDropdownExpanded by remember { mutableStateOf(false) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var cancelReasonText by remember { mutableStateOf("") }
+
+    // İptal dialog'u
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false },
+            title = { Text(stringResource(R.string.purchasing_cancel_title)) },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.purchasing_cancel_confirm),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    OutlinedTextField(
+                        value = cancelReasonText,
+                        onValueChange = { cancelReasonText = it },
+                        label = { Text(stringResource(R.string.cancel_reason_optional)) },
+                        minLines = 2,
+                        maxLines = 4,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onCancelRequest?.invoke(cancelReasonText)
+                        showCancelDialog = false
+                        cancelReasonText = ""
+                    }
+                ) {
+                    Text(
+                        text = stringResource(R.string.confirm),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
 
     Column(
         modifier = modifier
@@ -187,7 +244,6 @@ private fun PurchasingDetailContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Talep Numarası (otomatik, salt okunur)
         if (!isNewRequest && formState.requestNumber.isNotBlank()) {
             AppTextField(
                 label = stringResource(R.string.field_request_number),
@@ -197,7 +253,6 @@ private fun PurchasingDetailContent(
             )
         }
 
-        // Malzeme Alım Durumu (salt okunur rozet)
         currentStatus?.let { status ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -213,7 +268,6 @@ private fun PurchasingDetailContent(
             HorizontalDivider()
         }
 
-        // Alım Yapılacak Ürün
         AppTextField(
             label = stringResource(R.string.field_item_to_purchase),
             value = formState.itemToPurchase,
@@ -221,15 +275,11 @@ private fun PurchasingDetailContent(
             isError = formState.errorMessage?.contains("ürün") == true,
             errorMessage = if (formState.errorMessage?.contains("ürün") == true) formState.errorMessage else null
         )
-
-        // Firma Adı
         AppTextField(
             label = stringResource(R.string.field_company_name),
             value = formState.companyName,
             onValueChange = onCompanyNameChange
         )
-
-        // Firma Adresi
         AppTextField(
             label = stringResource(R.string.field_company_address),
             value = formState.companyAddress,
@@ -237,29 +287,22 @@ private fun PurchasingDetailContent(
             singleLine = false,
             maxLines = 3
         )
-
-        // İletişim Numarası
         AppTextField(
             label = stringResource(R.string.field_contact_number),
             value = formState.contactNumber,
             onValueChange = onContactNumberChange
         )
-
-        // Ürün Ölçü Bilgisi
         AppTextField(
             label = stringResource(R.string.field_product_dimensions),
             value = formState.productDimensions,
             onValueChange = onProductDimensionsChange
         )
-
-        // Ürün Ağırlık Bilgisi
         AppTextField(
             label = stringResource(R.string.field_product_weight),
             value = formState.productWeight,
             onValueChange = onProductWeightChange
         )
 
-        // Aciliyet Durumu
         ExposedDropdownMenuBox(
             expanded = urgencyDropdownExpanded,
             onExpandedChange = { urgencyDropdownExpanded = it }
@@ -292,15 +335,12 @@ private fun PurchasingDetailContent(
             }
         }
 
-        // Alım Yapılacak Tarih
         AppTextField(
             label = stringResource(R.string.field_purchase_date),
             value = formState.purchaseDate,
             onValueChange = onPurchaseDateChange,
             placeholder = "YYYY-AA-GG"
         )
-
-        // Notlar
         AppTextField(
             label = stringResource(R.string.field_notes),
             value = formState.notes,
@@ -311,16 +351,28 @@ private fun PurchasingDetailContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Kaydet / Güncelle butonu
-        AppButton(
-            text = if (isNewRequest) {
-                stringResource(R.string.purchasing_save)
-            } else {
-                stringResource(R.string.purchasing_update)
-            },
-            onClick = onSave,
-            isLoading = formState.isSaving
-        )
+        // İptal edilmemişse kaydet/güncelle butonu
+        if (!isCancelled) {
+            AppButton(
+                text = if (isNewRequest) {
+                    stringResource(R.string.purchasing_save)
+                } else {
+                    stringResource(R.string.purchasing_update)
+                },
+                onClick = onSave,
+                isLoading = formState.isSaving
+            )
+        }
+
+        // Mevcut ve iptal edilmemiş talep için iptal butonu
+        if (!isNewRequest && !isCancelled && onCancelRequest != null) {
+            AppButton(
+                text = stringResource(R.string.purchasing_cancel_request),
+                onClick = { showCancelDialog = true },
+                variant = ButtonVariant.DANGER,
+                isLoading = formState.isSaving
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
     }
@@ -341,6 +393,7 @@ private fun PurchasingDetailScreenPreview() {
             isNewRequest = false,
             requestId = "mock-001",
             currentStatus = MaterialStatus.IN_PROGRESS,
+            isCancelled = false,
             onItemToPurchaseChange = {},
             onCompanyNameChange = {},
             onCompanyAddressChange = {},
@@ -350,7 +403,8 @@ private fun PurchasingDetailScreenPreview() {
             onUrgencyLevelChange = {},
             onPurchaseDateChange = {},
             onNotesChange = {},
-            onSave = {}
+            onSave = {},
+            onCancelRequest = {}
         )
     }
 }

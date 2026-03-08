@@ -1,7 +1,7 @@
 /*
  * PurchasingViewModel.kt
  * Satınalma ekranları ViewModel'i.
- * Talep listesi, yeni talep oluşturma ve mevcut talebi güncelleme işlemlerini yönetir.
+ * Talep listesi, yeni talep oluşturma, güncelleme ve iptal işlemlerini yönetir.
  */
 package com.tekin.satinalma.presentation.purchasing
 
@@ -11,8 +11,8 @@ import com.tekin.satinalma.domain.model.PurchaseRequest
 import com.tekin.satinalma.domain.model.UrgencyLevel
 import com.tekin.satinalma.domain.usecase.CreatePurchaseUseCase
 import com.tekin.satinalma.domain.usecase.GetPurchaseRequestsUseCase
-import com.tekin.satinalma.domain.usecase.UpdateStatusUseCase
 import com.tekin.satinalma.domain.repository.PurchaseRepository
+import com.tekin.satinalma.util.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,7 +45,8 @@ data class PurchasingFormState(
     val notes: String = "",
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
-    val saveSuccess: Boolean = false
+    val saveSuccess: Boolean = false,
+    val cancelSuccess: Boolean = false
 )
 
 /**
@@ -55,7 +56,8 @@ data class PurchasingFormState(
 class PurchasingViewModel @Inject constructor(
     private val getPurchaseRequestsUseCase: GetPurchaseRequestsUseCase,
     private val createPurchaseUseCase: CreatePurchaseUseCase,
-    private val repository: PurchaseRepository
+    private val repository: PurchaseRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PurchasingUiState())
@@ -155,8 +157,19 @@ class PurchasingViewModel @Inject constructor(
         }
     }
 
+    /** Talebi iptal eder */
+    fun cancelRequest(requestId: String, reason: String) {
+        val cancelledBy = sessionManager.currentUser?.fullName ?: "Satınalma Personeli"
+
+        viewModelScope.launch {
+            _formState.update { it.copy(isSaving = true) }
+            repository.cancelRequest(requestId, reason.ifBlank { null }, cancelledBy)
+            _formState.update { it.copy(isSaving = false, cancelSuccess = true) }
+        }
+    }
+
     fun clearFormMessages() {
-        _formState.update { it.copy(errorMessage = null, saveSuccess = false) }
+        _formState.update { it.copy(errorMessage = null, saveSuccess = false, cancelSuccess = false) }
     }
 
     fun clearMessages() {
