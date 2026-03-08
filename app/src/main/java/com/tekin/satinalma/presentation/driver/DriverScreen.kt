@@ -1,10 +1,13 @@
 /*
  * DriverScreen.kt
  * Şoför ana ekranı ve talep detay ekranı.
- * Atanmış ve atanmamış talepler gösterilir; üstüne alma ve durum güncelleme desteklenir.
+ * Atanmış ve atanmamış talepler gösterilir.
+ * Şoför kendi plakasıyla üstüne alabilir; atanmamış taleplerin durumunu değiştiremez.
+ * Üstündeki talep için itiraz gönderebilir.
  */
 package com.tekin.satinalma.presentation.driver
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +25,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -37,6 +42,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -71,6 +77,8 @@ import com.tekin.satinalma.presentation.theme.SatinalmaTheme
  */
 @Composable
 fun DriverScreen(
+    currentUserFullName: String,
+    currentUserRole: String,
     onRequestClick: (String) -> Unit,
     onLogout: () -> Unit,
     viewModel: DriverViewModel = hiltViewModel()
@@ -80,6 +88,8 @@ fun DriverScreen(
     DriverListContent(
         myRequests = uiState.myRequests,
         unassignedRequests = uiState.unassignedRequests,
+        currentUserFullName = currentUserFullName,
+        currentUserRole = currentUserRole,
         onRequestClick = onRequestClick,
         onLogout = onLogout
     )
@@ -90,6 +100,8 @@ fun DriverScreen(
 private fun DriverListContent(
     myRequests: List<PurchaseRequest>,
     unassignedRequests: List<PurchaseRequest>,
+    currentUserFullName: String,
+    currentUserRole: String,
     onRequestClick: (String) -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
@@ -117,12 +129,11 @@ private fun DriverListContent(
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 ),
                 actions = {
-                    IconButton(onClick = onLogout) {
-                        Icon(
-                            imageVector = Icons.Default.ExitToApp,
-                            contentDescription = stringResource(R.string.logout)
-                        )
-                    }
+                    UserInfoAction(
+                        fullName = currentUserFullName,
+                        roleName = currentUserRole,
+                        onLogout = onLogout
+                    )
                 }
             )
         }
@@ -207,15 +218,14 @@ fun DriverDetailScreen(
         formState.request?.let { request ->
             DriverDetailContent(
                 request = request,
-                editableLicensePlate = formState.editableLicensePlate,
+                driverLicensePlate = viewModel.currentDriverLicensePlate,
                 selectedStatus = formState.selectedStatus,
                 isSaving = formState.isSaving,
-                isAssigned = request.assignedDriverId != null,
-                onLicensePlateChange = viewModel::onLicensePlateChange,
+                isAssignedToCurrentDriver = request.assignedDriverId == viewModel.currentDriverId,
                 onStatusSelected = viewModel::onStatusSelected,
                 onTakeOver = viewModel::takeOverRequest,
                 onUpdateStatus = viewModel::updateStatus,
-                onSaveLicensePlate = viewModel::saveLicensePlate,
+                onSubmitObjection = viewModel::submitObjection,
                 modifier = Modifier.padding(paddingValues)
             )
         }
@@ -252,18 +262,63 @@ private fun DriverDetailTopBar(onNavigateBack: () -> Unit) {
 @Composable
 private fun DriverDetailContent(
     request: PurchaseRequest,
-    editableLicensePlate: String,
+    driverLicensePlate: String,
     selectedStatus: MaterialStatus,
     isSaving: Boolean,
-    isAssigned: Boolean,
-    onLicensePlateChange: (String) -> Unit,
+    isAssignedToCurrentDriver: Boolean,
     onStatusSelected: (MaterialStatus) -> Unit,
     onTakeOver: () -> Unit,
     onUpdateStatus: () -> Unit,
-    onSaveLicensePlate: () -> Unit,
+    onSubmitObjection: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var statusDropdownExpanded by remember { mutableStateOf(false) }
+    var showObjectionDialog by remember { mutableStateOf(false) }
+    var objectionText by remember { mutableStateOf("") }
+
+    // İtiraz dialog'u
+    if (showObjectionDialog) {
+        AlertDialog(
+            onDismissRequest = { showObjectionDialog = false },
+            title = { Text(stringResource(R.string.driver_objection_title)) },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.driver_objection_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    OutlinedTextField(
+                        value = objectionText,
+                        onValueChange = { objectionText = it },
+                        label = { Text(stringResource(R.string.driver_objection_reason)) },
+                        minLines = 3,
+                        maxLines = 5,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onSubmitObjection(objectionText)
+                        showObjectionDialog = false
+                        objectionText = ""
+                    }
+                ) {
+                    Text(stringResource(R.string.driver_objection_send))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showObjectionDialog = false
+                    objectionText = ""
+                }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
 
     Column(
         modifier = modifier
@@ -304,6 +359,36 @@ private fun DriverDetailContent(
             )
             UrgencyBadge(urgencyLevel = request.urgencyLevel)
         }
+
+        // İtiraz durumu göstergesi
+        if (request.hasObjection) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
+                        shape = MaterialTheme.shapes.small
+                    )
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "⚠️ ${stringResource(R.string.driver_objection_sent)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+
+        HorizontalDivider()
+
+        // Şoförün plaka bilgisi (salt okunur — hesabından otomatik gelir)
+        AppTextField(
+            label = stringResource(R.string.field_license_plate),
+            value = driverLicensePlate.ifBlank { "-" },
+            onValueChange = {},
+            readOnly = true
+        )
 
         HorizontalDivider()
 
@@ -355,24 +440,8 @@ private fun DriverDetailContent(
 
         HorizontalDivider()
 
-        // Plaka girişi — düzenlenebilir
-        AppTextField(
-            label = stringResource(R.string.field_license_plate),
-            value = editableLicensePlate,
-            onValueChange = onLicensePlateChange,
-            placeholder = "34 ABC 123"
-        )
-        AppButton(
-            text = stringResource(R.string.logistics_assign_plate),
-            onClick = onSaveLicensePlate,
-            variant = ButtonVariant.SECONDARY,
-            isLoading = isSaving
-        )
-
-        HorizontalDivider()
-
         // Üstüne al butonu — henüz atanmamışsa göster
-        if (!isAssigned) {
+        if (!isAssignedToCurrentDriver) {
             AppButton(
                 text = stringResource(R.string.driver_take_over),
                 onClick = onTakeOver,
@@ -380,46 +449,110 @@ private fun DriverDetailContent(
             )
         }
 
-        // Durum güncelleme dropdown
-        ExposedDropdownMenuBox(
-            expanded = statusDropdownExpanded,
-            onExpandedChange = { statusDropdownExpanded = it }
-        ) {
-            OutlinedTextField(
-                value = selectedStatus.displayName,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text(stringResource(R.string.field_material_status)) },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusDropdownExpanded)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
-            )
-            ExposedDropdownMenu(
+        // Durum güncelleme — sadece atanmış taleplerde aktif
+        if (isAssignedToCurrentDriver) {
+            ExposedDropdownMenuBox(
                 expanded = statusDropdownExpanded,
-                onDismissRequest = { statusDropdownExpanded = false }
+                onExpandedChange = { statusDropdownExpanded = it }
             ) {
-                MaterialStatus.entries.forEach { status ->
-                    DropdownMenuItem(
-                        text = { Text(status.displayName) },
-                        onClick = {
-                            onStatusSelected(status)
-                            statusDropdownExpanded = false
-                        }
-                    )
+                OutlinedTextField(
+                    value = selectedStatus.displayName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.field_material_status)) },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusDropdownExpanded)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = statusDropdownExpanded,
+                    onDismissRequest = { statusDropdownExpanded = false }
+                ) {
+                    MaterialStatus.entries.forEach { status ->
+                        DropdownMenuItem(
+                            text = { Text(status.displayName) },
+                            onClick = {
+                                onStatusSelected(status)
+                                statusDropdownExpanded = false
+                            }
+                        )
+                    }
                 }
             }
+
+            AppButton(
+                text = stringResource(R.string.driver_update_status),
+                onClick = onUpdateStatus,
+                isLoading = isSaving
+            )
+
+            // İtiraz butonu
+            AppButton(
+                text = stringResource(R.string.driver_objection_button),
+                onClick = { showObjectionDialog = true },
+                variant = ButtonVariant.SECONDARY,
+                isLoading = false
+            )
         }
 
-        AppButton(
-            text = stringResource(R.string.driver_update_status),
-            onClick = onUpdateStatus,
-            isLoading = isSaving
-        )
-
         Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+/**
+ * TopAppBar sağ tarafında kullanıcı adı ve çıkış butonu
+ */
+@Composable
+fun UserInfoAction(
+    fullName: String,
+    roleName: String,
+    onLogout: () -> Unit
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = { menuExpanded = true }) {
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = fullName
+            )
+        }
+        if (fullName.isNotBlank()) {
+            Column(modifier = Modifier.padding(end = 4.dp)) {
+                Text(
+                    text = fullName,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = roleName,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+        }
+    }
+
+    // Çıkış dropdown menüsü
+    androidx.compose.material3.DropdownMenu(
+        expanded = menuExpanded,
+        onDismissRequest = { menuExpanded = false }
+    ) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.logout)) },
+            onClick = {
+                menuExpanded = false
+                onLogout()
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.ExitToApp,
+                    contentDescription = null
+                )
+            }
+        )
     }
 }
 
@@ -435,17 +568,17 @@ private fun DriverDetailScreenPreview() {
                 companyAddress = "Organize Sanayi Bölgesi, Ankara",
                 urgencyLevel = UrgencyLevel.HIGH,
                 materialStatus = MaterialStatus.IN_PROGRESS,
-                licensePlate = "34 ABC 123"
+                licensePlate = "34 ABC 123",
+                assignedDriverId = "3"
             ),
-            editableLicensePlate = "34 ABC 123",
+            driverLicensePlate = "34 ABC 123",
             selectedStatus = MaterialStatus.IN_PROGRESS,
             isSaving = false,
-            isAssigned = false,
-            onLicensePlateChange = {},
+            isAssignedToCurrentDriver = true,
             onStatusSelected = {},
             onTakeOver = {},
             onUpdateStatus = {},
-            onSaveLicensePlate = {}
+            onSubmitObjection = {}
         )
     }
 }

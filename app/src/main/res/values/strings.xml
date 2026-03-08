@@ -89,4 +89,28 @@
     <string name="no_date_selected">Tarih seçilmedi</string>
     <string name="select_date">Tarih Seç</string>
     <string name="logout">Çıkış Yap</string>
+
+    <!-- Şoför İtiraz -->
+    <string name="driver_objection_button">İtiraz Et</string>
+    <string name="driver_objection_title">İtiraz Gönder</string>
+    <string name="driver_objection_desc">Bu talep için itiraz nedeninizi açıklayın:</string>
+    <string name="driver_objection_reason">İtiraz Nedeni</string>
+    <string name="driver_objection_send">Gönder</string>
+    <string name="driver_objection_sent">Bu talebe itiraz edildi</string>
+
+    <!-- Sevkiyat Ofis -->
+    <string name="logistics_assign_driver">Şoför Seçin</string>
+    <string name="logistics_select_driver">Şoför seçilmedi</string>
+    <string name="logistics_assign_driver_button">Şoförü Ata</string>
+    <string name="logistics_cancel_job">İşi İptal Et</string>
+    <string name="logistics_cancel_title">İşi İptal Et</string>
+    <string name="logistics_cancel_confirm">Bu işi iptal etmek istediğinize emin misiniz?</string>
+    <string name="logistics_objection_banner">Şoför bu talebe itiraz etti:</string>
+
+    <!-- Satınalma İptal -->
+    <string name="purchasing_cancel_request">Talebi İptal Et</string>
+    <string name="purchasing_cancel_title">Talebi İptal Et</string>
+    <string name="purchasing_cancel_confirm">Bu talebi iptal etmek istediğinize emin misiniz?</string>
+    <string name="cancel_reason">İptal Nedeni</string>
+    <string name="cancel_reason_optional">İptal Nedeni (opsiyonel)</string>
 </resources>
