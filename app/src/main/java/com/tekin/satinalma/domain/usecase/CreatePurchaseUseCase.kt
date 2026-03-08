@@ -1,7 +1,7 @@
 /*
  * CreatePurchaseUseCase.kt
  * Yeni satın alma talebi oluşturma iş kuralını kapsar.
- * Talep numarası otomatik olarak üretilir.
+ * Talep numarası repository üzerinden otomatik olarak üretilir (TLP-YYYY-NNN formatı).
  */
 package com.tekin.satinalma.domain.usecase
 
@@ -17,17 +17,10 @@ class CreatePurchaseUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(request: PurchaseRequest) {
         val requestWithNumber = if (request.requestNumber.isBlank()) {
-            request.copy(
-                requestNumber = generateRequestNumber()
-            )
+            request.copy(requestNumber = repository.generateRequestNumber())
         } else {
             request
         }
         repository.createRequest(requestWithNumber)
-    }
-
-    private fun generateRequestNumber(): String {
-        val timestamp = System.currentTimeMillis()
-        return "TLB-${timestamp % 100000}"
     }
 }

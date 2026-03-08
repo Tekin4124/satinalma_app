@@ -1,10 +1,11 @@
 /*
  * LoginScreen.kt
- * Giriş ekranı — kullanıcı adı, şifre ve rol seçimi ile kimlik doğrulama.
- * Seçilen role göre ilgili ana ekrana yönlendirme yapılır.
+ * Giriş ekranı — üstte gradient banner, altta beyaz kart içinde form.
+ * Kullanıcı adı, şifre (göz ikonu ile toggle) ve rol seçimi.
  */
 package com.tekin.satinalma.presentation.auth
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,11 +17,14 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -28,6 +32,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -42,11 +47,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -55,7 +63,8 @@ import com.tekin.satinalma.R
 import com.tekin.satinalma.domain.model.User
 import com.tekin.satinalma.domain.model.UserRole
 import com.tekin.satinalma.presentation.components.AppButton
-import com.tekin.satinalma.presentation.theme.Primary
+import com.tekin.satinalma.presentation.theme.GradientEnd
+import com.tekin.satinalma.presentation.theme.GradientStart
 import com.tekin.satinalma.presentation.theme.SatinalmaTheme
 
 /**
@@ -72,12 +81,10 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Giriş başarılıysa yönlendir
     LaunchedEffect(uiState.loggedInUser) {
         uiState.loggedInUser?.let { onLoginSuccess(it) }
     }
 
-    // Hata mesajı varsa snackbar göster
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -110,46 +117,59 @@ private fun LoginContent(
     modifier: Modifier = Modifier
 ) {
     var roleDropdownExpanded by remember { mutableStateOf(false) }
+    var passwordVisible by remember { mutableStateOf(false) }
 
-    Box(
+    val gradientBrush = Brush.verticalGradient(
+        colors = listOf(GradientStart, GradientEnd)
+    )
+
+    Column(
         modifier = modifier
             .fillMaxSize()
-            .imePadding(),
-        contentAlignment = Alignment.Center
+            .imePadding()
     ) {
-        Column(
+        // Üst gradient alan — uygulama logosu + adı
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .background(brush = gradientBrush)
+                .padding(vertical = 48.dp, horizontal = 24.dp),
+            contentAlignment = Alignment.Center
         ) {
-            // Uygulama başlığı
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                modifier = Modifier.size(72.dp),
-                tint = Primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = Primary
-            )
-            Text(
-                text = stringResource(R.string.app_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = Color.White
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    text = stringResource(R.string.app_subtitle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+            }
+        }
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Giriş kartı
+        // Alt kısım — beyaz kart içinde form
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF5F5F5))
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
@@ -170,25 +190,33 @@ private fun LoginContent(
                         value = uiState.username,
                         onValueChange = onUsernameChange,
                         label = { Text(stringResource(R.string.login_username)) },
-                        leadingIcon = {
-                            Icon(Icons.Default.Person, contentDescription = null)
-                        },
+                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                     )
 
-                    // Şifre
+                    // Şifre — göz ikonu ile görünürlük toggle'ı
                     OutlinedTextField(
                         value = uiState.password,
                         onValueChange = onPasswordChange,
                         label = { Text(stringResource(R.string.login_password)) },
-                        leadingIcon = {
-                            Icon(Icons.Default.Lock, contentDescription = null)
+                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Default.VisibilityOff
+                                    else Icons.Default.Visibility,
+                                    contentDescription = null
+                                )
+                            }
                         },
-                        visualTransformation = PasswordVisualTransformation(),
+                        visualTransformation = if (passwordVisible) VisualTransformation.None
+                        else PasswordVisualTransformation(),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Password,
                             imeAction = ImeAction.Done
@@ -211,7 +239,8 @@ private fun LoginContent(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor()
+                                .menuAnchor(),
+                            shape = RoundedCornerShape(12.dp)
                         )
                         ExposedDropdownMenu(
                             expanded = roleDropdownExpanded,
@@ -229,15 +258,12 @@ private fun LoginContent(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                    // Giriş butonu
+                    // Giriş butonu — full-width, rounded
                     AppButton(
-                        text = if (uiState.isLoading) {
-                            stringResource(R.string.login_loading)
-                        } else {
-                            stringResource(R.string.login_button)
-                        },
+                        text = if (uiState.isLoading) stringResource(R.string.login_loading)
+                        else stringResource(R.string.login_button),
                         onClick = onLoginClick,
                         isLoading = uiState.isLoading
                     )
@@ -253,7 +279,7 @@ private fun LoginScreenPreview() {
     SatinalmaTheme {
         LoginContent(
             uiState = LoginUiState(
-                username = "test_kullanici",
+                username = "mehmet",
                 selectedRole = UserRole.PURCHASING
             ),
             onUsernameChange = {},

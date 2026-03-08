@@ -55,3 +55,10 @@ val UrgencyLow = Color(0xFF558B2F)
 val UrgencyNormal = Color(0xFF1565C0)
 val UrgencyHigh = Color(0xFFE65100)
 val UrgencyUrgent = Color(0xFFB71C1C)
+
+// Gradient renkleri — TopAppBar için koyu→orta mavi geçiş
+val GradientStart = Color(0xFF0D47A1)
+val GradientEnd = Color(0xFF1976D2)
+
+// Şoför "Yeni" badge rengi
+val NewBadge = Color(0xFFD32F2F)

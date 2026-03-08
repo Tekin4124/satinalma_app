@@ -1,7 +1,7 @@
 /*
  * LogisticsScreen.kt
  * Sevkiyat ofis ana liste ekranı ve talep detay ekranı.
- * Talep alanları büyük bölümü salt okunur; plaka girişi düzenlenebilir.
+ * Şoför seçimi dropdown, iş iptali, itiraz banner ve yönlendirme özellikleri içerir.
  */
 package com.tekin.satinalma.presentation.logistics
 
@@ -18,27 +18,40 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,8 +62,12 @@ import com.tekin.satinalma.R
 import com.tekin.satinalma.domain.model.MaterialStatus
 import com.tekin.satinalma.domain.model.PurchaseRequest
 import com.tekin.satinalma.domain.model.UrgencyLevel
+import com.tekin.satinalma.domain.model.User
+import com.tekin.satinalma.domain.model.UserRole
 import com.tekin.satinalma.presentation.components.AppButton
 import com.tekin.satinalma.presentation.components.AppTextField
+import com.tekin.satinalma.presentation.components.AppTopBar
+import com.tekin.satinalma.presentation.components.ButtonVariant
 import com.tekin.satinalma.presentation.components.RequestCard
 import com.tekin.satinalma.presentation.components.StatusBadge
 import com.tekin.satinalma.presentation.components.UrgencyBadge
@@ -66,47 +83,25 @@ fun LogisticsScreen(
     viewModel: LogisticsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    LogisticsListContent(
-        requests = uiState.requests,
-        isLoading = uiState.isLoading,
-        onRequestClick = onRequestClick,
-        onLogout = onLogout
-    )
-}
+    LaunchedEffect(uiState.successMessage) {
+        uiState.successMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessages()
+        }
+    }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LogisticsListContent(
-    requests: List<PurchaseRequest>,
-    isLoading: Boolean,
-    onRequestClick: (String) -> Unit,
-    onLogout: () -> Unit,
-    modifier: Modifier = Modifier
-) {
     Scaffold(
-        modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.logistics_title),
-                        fontWeight = FontWeight.SemiBold
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                actions = {
-                    IconButton(onClick = onLogout) {
-                        Icon(
-                            imageVector = Icons.Default.ExitToApp,
-                            contentDescription = stringResource(R.string.logout)
-                        )
-                    }
-                }
+            AppTopBar(
+                title = stringResource(R.string.logistics_title),
+                titleIcon = Icons.Default.LocalShipping,
+                currentUser = viewModel.getCurrentUser(),
+                notifications = viewModel.getNotifications(),
+                onLogout = onLogout,
+                onNotificationRead = viewModel::markNotificationRead
             )
         }
     ) { paddingValues ->
@@ -115,19 +110,29 @@ private fun LogisticsListContent(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (requests.isEmpty()) {
-                Text(
-                    text = stringResource(R.string.purchasing_no_requests),
+            if (uiState.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (uiState.requests.isEmpty()) {
+                Column(
                     modifier = Modifier.align(Alignment.Center),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("🚛", style = MaterialTheme.typography.displayMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.purchasing_no_requests),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    contentPadding = PaddingValues(
+                        start = 16.dp, end = 16.dp, top = 16.dp, bottom = 80.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(requests, key = { it.id }) { request ->
+                    items(uiState.requests, key = { it.id }) { request ->
                         RequestCard(
                             request = request,
                             onClick = { onRequestClick(request.id) }
@@ -149,6 +154,8 @@ fun LogisticsDetailScreen(
     viewModel: LogisticsViewModel = hiltViewModel()
 ) {
     val formState by viewModel.formState.collectAsStateWithLifecycle()
+    val drivers by viewModel.drivers.collectAsStateWithLifecycle()
+    val allRequests by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(requestId) {
@@ -178,10 +185,16 @@ fun LogisticsDetailScreen(
         formState.request?.let { request ->
             LogisticsDetailContent(
                 request = request,
-                editableLicensePlate = formState.editableLicensePlate,
+                drivers = drivers,
+                selectedDriver = formState.selectedDriver,
+                allRequests = allRequests.requests.filter { it.id != requestId },
+                redirectTargetId = formState.redirectTargetId,
                 isSaving = formState.isSaving,
-                onLicensePlateChange = viewModel::onLicensePlateChange,
-                onSaveLicensePlate = viewModel::saveLicensePlate,
+                onDriverSelected = viewModel::onDriverSelected,
+                onAssignDriver = viewModel::assignDriver,
+                onCancelRequest = { reason -> viewModel.cancelRequest(requestId, reason) },
+                onRedirectTargetSelected = viewModel::onRedirectTargetSelected,
+                onRedirect = viewModel::redirectRequest,
                 modifier = Modifier.padding(paddingValues)
             )
         }
@@ -214,15 +227,29 @@ private fun LogisticsDetailTopBar(onNavigateBack: () -> Unit) {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LogisticsDetailContent(
     request: PurchaseRequest,
-    editableLicensePlate: String,
+    drivers: List<User>,
+    selectedDriver: User?,
+    allRequests: List<PurchaseRequest>,
+    redirectTargetId: String?,
     isSaving: Boolean,
-    onLicensePlateChange: (String) -> Unit,
-    onSaveLicensePlate: () -> Unit,
+    onDriverSelected: (User) -> Unit,
+    onAssignDriver: () -> Unit,
+    onCancelRequest: (String?) -> Unit,
+    onRedirectTargetSelected: (String?) -> Unit,
+    onRedirect: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var driverDropdownExpanded by remember { mutableStateOf(false) }
+    var redirectDropdownExpanded by remember { mutableStateOf(false) }
+    var showCancelDialog by remember { mutableStateOf(false) }
+    var cancelReason by remember { mutableStateOf("") }
+
+    val isCancelled = request.materialStatus == MaterialStatus.CANCELLED
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -238,7 +265,7 @@ private fun LogisticsDetailContent(
             readOnly = true
         )
 
-        // Malzeme durumu (salt okunur)
+        // Malzeme durumu
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -251,7 +278,7 @@ private fun LogisticsDetailContent(
             StatusBadge(status = request.materialStatus)
         }
 
-        // Aciliyet durumu (salt okunur rozet)
+        // Aciliyet
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -264,83 +291,177 @@ private fun LogisticsDetailContent(
             UrgencyBadge(urgencyLevel = request.urgencyLevel)
         }
 
-        HorizontalDivider()
-
-        // Salt okunur alanlar
-        AppTextField(
-            label = stringResource(R.string.field_item_to_purchase),
-            value = request.itemToPurchase,
-            onValueChange = {},
-            readOnly = true
-        )
-        AppTextField(
-            label = stringResource(R.string.field_company_name),
-            value = request.companyName,
-            onValueChange = {},
-            readOnly = true
-        )
-        AppTextField(
-            label = stringResource(R.string.field_company_address),
-            value = request.companyAddress,
-            onValueChange = {},
-            readOnly = true,
-            singleLine = false,
-            maxLines = 3
-        )
-        AppTextField(
-            label = stringResource(R.string.field_contact_number),
-            value = request.contactNumber,
-            onValueChange = {},
-            readOnly = true
-        )
-        AppTextField(
-            label = stringResource(R.string.field_product_dimensions),
-            value = request.productDimensions,
-            onValueChange = {},
-            readOnly = true
-        )
-        AppTextField(
-            label = stringResource(R.string.field_product_weight),
-            value = request.productWeight,
-            onValueChange = {},
-            readOnly = true
-        )
-        AppTextField(
-            label = stringResource(R.string.field_purchase_date),
-            value = request.purchaseDate,
-            onValueChange = {},
-            readOnly = true
-        )
-        if (request.notes.isNotBlank()) {
-            AppTextField(
-                label = stringResource(R.string.field_notes),
-                value = request.notes,
-                onValueChange = {},
-                readOnly = true,
-                singleLine = false,
-                maxLines = 3
-            )
+        // Şoför itiraz banner'ı
+        if (request.hasObjection && request.objectionReason != null) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFFFFF3E0),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "⚠️ ${stringResource(R.string.driver_objection_label)}: ${request.objectionReason}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFE65100),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                )
+            }
         }
 
         HorizontalDivider()
 
-        // Plaka girişi — düzenlenebilir
-        AppTextField(
-            label = stringResource(R.string.field_license_plate),
-            value = editableLicensePlate,
-            onValueChange = onLicensePlateChange,
-            placeholder = "34 ABC 123"
-        )
+        // Salt okunur alanlar
+        AppTextField(label = stringResource(R.string.field_item_to_purchase), value = request.itemToPurchase, onValueChange = {}, readOnly = true)
+        AppTextField(label = stringResource(R.string.field_company_name), value = request.companyName, onValueChange = {}, readOnly = true)
+        AppTextField(label = stringResource(R.string.field_company_address), value = request.companyAddress, onValueChange = {}, readOnly = true, singleLine = false, maxLines = 3)
+        AppTextField(label = stringResource(R.string.field_contact_number), value = request.contactNumber, onValueChange = {}, readOnly = true)
+        AppTextField(label = stringResource(R.string.field_product_dimensions), value = request.productDimensions, onValueChange = {}, readOnly = true)
+        AppTextField(label = stringResource(R.string.field_product_weight), value = request.productWeight, onValueChange = {}, readOnly = true)
+        AppTextField(label = stringResource(R.string.field_purchase_date), value = request.purchaseDate, onValueChange = {}, readOnly = true)
+        if (request.notes.isNotBlank()) {
+            AppTextField(label = stringResource(R.string.field_notes), value = request.notes, onValueChange = {}, readOnly = true, singleLine = false, maxLines = 3)
+        }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        HorizontalDivider()
 
-        AppButton(
-            text = stringResource(R.string.logistics_save_changes),
-            onClick = onSaveLicensePlate,
-            isLoading = isSaving
-        )
+        // Şoför seçimi dropdown (manuel plaka yerine)
+        if (!isCancelled) {
+            ExposedDropdownMenuBox(
+                expanded = driverDropdownExpanded,
+                onExpandedChange = { driverDropdownExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedDriver?.let { "${it.fullName} — ${it.licensePlate ?: "-"}" }
+                        ?: (request.assignedDriverId?.let { id ->
+                            drivers.find { it.id == id }?.let { "${it.fullName} — ${it.licensePlate ?: "-"}" }
+                        } ?: stringResource(R.string.logistics_select_driver)),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.logistics_select_driver)) },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = driverDropdownExpanded)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = driverDropdownExpanded,
+                    onDismissRequest = { driverDropdownExpanded = false }
+                ) {
+                    drivers.forEach { driver ->
+                        DropdownMenuItem(
+                            text = { Text("${driver.fullName} — ${driver.licensePlate ?: "-"}") },
+                            onClick = {
+                                onDriverSelected(driver)
+                                driverDropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            AppButton(
+                text = stringResource(R.string.logistics_assign_driver),
+                onClick = onAssignDriver,
+                isLoading = isSaving,
+                enabled = selectedDriver != null
+            )
+
+            HorizontalDivider()
+
+            // Talep yönlendirme
+            if (allRequests.isNotEmpty()) {
+                Text(
+                    text = stringResource(R.string.logistics_redirect),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+                ExposedDropdownMenuBox(
+                    expanded = redirectDropdownExpanded,
+                    onExpandedChange = { redirectDropdownExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = redirectTargetId?.let { id ->
+                            allRequests.find { it.id == id }?.requestNumber ?: id
+                        } ?: stringResource(R.string.field_redirect_request),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.field_redirect_request)) },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = redirectDropdownExpanded)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = redirectDropdownExpanded,
+                        onDismissRequest = { redirectDropdownExpanded = false }
+                    ) {
+                        allRequests.forEach { req ->
+                            DropdownMenuItem(
+                                text = { Text("${req.requestNumber} — ${req.itemToPurchase}") },
+                                onClick = {
+                                    onRedirectTargetSelected(req.id)
+                                    redirectDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+                AppButton(
+                    text = stringResource(R.string.logistics_redirect),
+                    onClick = onRedirect,
+                    variant = ButtonVariant.SECONDARY,
+                    isLoading = isSaving,
+                    enabled = redirectTargetId != null
+                )
+                HorizontalDivider()
+            }
+
+            // İptal butonu
+            AppButton(
+                text = stringResource(R.string.cancel_request_title),
+                onClick = { showCancelDialog = true },
+                variant = ButtonVariant.DANGER
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    // İptal onay dialog'u
+    if (showCancelDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelDialog = false; cancelReason = "" },
+            title = { Text(stringResource(R.string.cancel_request_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.cancel_request_confirm))
+                    OutlinedTextField(
+                        value = cancelReason,
+                        onValueChange = { cancelReason = it },
+                        label = { Text(stringResource(R.string.cancel_reason_optional)) },
+                        singleLine = false,
+                        maxLines = 3
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onCancelRequest(cancelReason.ifBlank { null })
+                    showCancelDialog = false
+                    cancelReason = ""
+                }) {
+                    Text(stringResource(R.string.confirm), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelDialog = false; cancelReason = "" }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
     }
 }
 
@@ -350,18 +471,28 @@ private fun LogisticsDetailScreenPreview() {
     SatinalmaTheme {
         LogisticsDetailContent(
             request = PurchaseRequest(
-                requestNumber = "TLB-10001",
+                requestNumber = "TLP-2026-001",
                 itemToPurchase = "Çelik Profil 100x50mm",
                 companyName = "Test Firma A.Ş.",
                 companyAddress = "Organize Sanayi Bölgesi, Ankara",
                 urgencyLevel = UrgencyLevel.HIGH,
                 materialStatus = MaterialStatus.IN_PROGRESS,
-                licensePlate = "34 ABC 123"
+                licensePlate = "34 ABC 123",
+                hasObjection = true,
+                objectionReason = "Araç arızalı"
             ),
-            editableLicensePlate = "34 ABC 123",
+            drivers = listOf(
+                User("3", "ahmet", "Ahmet Yılmaz", UserRole.DRIVER, "34 ABC 123")
+            ),
+            selectedDriver = null,
+            allRequests = emptyList(),
+            redirectTargetId = null,
             isSaving = false,
-            onLicensePlateChange = {},
-            onSaveLicensePlate = {}
+            onDriverSelected = {},
+            onAssignDriver = {},
+            onCancelRequest = {},
+            onRedirectTargetSelected = {},
+            onRedirect = {}
         )
     }
 }
