@@ -27,5 +27,10 @@ data class PurchaseRequest(
     val assignedDriverId: String? = null,
     val assignedPurchasingStaffId: String = "",
     val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val cancellationReason: String? = null,    // İptal nedeni
+    val cancelledBy: String? = null,           // Kim iptal etti
+    val objectionReason: String? = null,       // Şoför itiraz nedeni
+    val hasObjection: Boolean = false,         // İtiraz var mı
+    val objectionBy: String? = null            // İtiraz eden şoför ID
 )

@@ -1,15 +1,17 @@
 /*
  * LogisticsViewModel.kt
  * Sevkiyat ofis ekranı ViewModel'i.
- * Talep listesi, plaka atama ve talep yönlendirme işlemlerini yönetir.
+ * Talep listesi, şoför atama ve talep iptal işlemlerini yönetir.
  */
 package com.tekin.satinalma.presentation.logistics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tekin.satinalma.domain.model.PurchaseRequest
+import com.tekin.satinalma.domain.model.User
 import com.tekin.satinalma.domain.repository.PurchaseRepository
 import com.tekin.satinalma.domain.usecase.GetPurchaseRequestsUseCase
+import com.tekin.satinalma.util.SessionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +33,8 @@ data class LogisticsUiState(
 /** Sevkiyat ofis talep detay formu durumu */
 data class LogisticsFormState(
     val request: PurchaseRequest? = null,
-    val editableLicensePlate: String = "",
+    val drivers: List<User> = emptyList(),
+    val selectedDriver: User? = null,
     val isSaving: Boolean = false,
     val successMessage: String? = null,
     val errorMessage: String? = null
@@ -43,7 +46,8 @@ data class LogisticsFormState(
 @HiltViewModel
 class LogisticsViewModel @Inject constructor(
     private val getPurchaseRequestsUseCase: GetPurchaseRequestsUseCase,
-    private val repository: PurchaseRepository
+    private val repository: PurchaseRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LogisticsUiState())
@@ -64,32 +68,65 @@ class LogisticsViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
-    /** Belirtilen talebi form için yükler */
+    /** Belirtilen talebi form için yükler, şoför listesi de yüklenir */
     fun loadRequest(requestId: String) {
         viewModelScope.launch {
             val request = repository.getRequestById(requestId)
+            val drivers = repository.getDrivers()
+            val assignedDriver = drivers.find { it.id == request?.assignedDriverId }
             _formState.update { _ ->
                 LogisticsFormState(
                     request = request,
-                    editableLicensePlate = request?.licensePlate ?: ""
+                    drivers = drivers,
+                    selectedDriver = assignedDriver
                 )
             }
         }
     }
 
-    fun onLicensePlateChange(value: String) {
-        _formState.update { it.copy(editableLicensePlate = value) }
+    fun onDriverSelected(driver: User) {
+        _formState.update { it.copy(selectedDriver = driver) }
     }
 
-    /** Plaka bilgisini günceller */
-    fun saveLicensePlate() {
+    /** Seçili şoförü talebe atar */
+    fun assignDriver() {
         val form = _formState.value
         val requestId = form.request?.id ?: return
+        val driver = form.selectedDriver ?: run {
+            _formState.update { it.copy(errorMessage = "Lütfen bir şoför seçin") }
+            return
+        }
 
         viewModelScope.launch {
             _formState.update { it.copy(isSaving = true) }
-            repository.updateLicensePlate(requestId, form.editableLicensePlate)
-            _formState.update { it.copy(isSaving = false, successMessage = "Plaka güncellendi") }
+            repository.assignDriver(requestId, driver.id, driver.licensePlate ?: "")
+            val updatedRequest = repository.getRequestById(requestId)
+            _formState.update { state ->
+                state.copy(
+                    isSaving = false,
+                    request = updatedRequest,
+                    successMessage = "${driver.fullName} şoföre atandı"
+                )
+            }
+        }
+    }
+
+    /** Talebi iptal eder */
+    fun cancelRequest(reason: String) {
+        val requestId = _formState.value.request?.id ?: return
+        val cancelledBy = sessionManager.currentUser?.fullName ?: "Sevkiyat Ofis"
+
+        viewModelScope.launch {
+            _formState.update { it.copy(isSaving = true) }
+            repository.cancelRequest(requestId, reason.ifBlank { null }, cancelledBy)
+            val updatedRequest = repository.getRequestById(requestId)
+            _formState.update { state ->
+                state.copy(
+                    isSaving = false,
+                    request = updatedRequest,
+                    successMessage = "İş iptal edildi"
+                )
+            }
         }
     }
 

@@ -37,6 +37,20 @@ object Constants {
         const val LOGISTICS_ID = "logistics-001"
     }
 
+    /** Mock kullanıcılar — test ve demo verisi */
+    object MockUserData {
+        val USERS = listOf(
+            com.tekin.satinalma.domain.model.User("1", "mehmet", "Mehmet Demir", com.tekin.satinalma.domain.model.UserRole.PURCHASING, null),
+            com.tekin.satinalma.domain.model.User("2", "ayse", "Ayşe Kaya", com.tekin.satinalma.domain.model.UserRole.LOGISTICS_OFFICE, null),
+            com.tekin.satinalma.domain.model.User("3", "ahmet", "Ahmet Yılmaz", com.tekin.satinalma.domain.model.UserRole.DRIVER, "34 ABC 123"),
+            com.tekin.satinalma.domain.model.User("4", "ali", "Ali Öztürk", com.tekin.satinalma.domain.model.UserRole.DRIVER, "06 XYZ 789"),
+            com.tekin.satinalma.domain.model.User("5", "veli", "Veli Şahin", com.tekin.satinalma.domain.model.UserRole.DRIVER, "35 DEF 456")
+        )
+
+        fun findByUsername(username: String): com.tekin.satinalma.domain.model.User? =
+            USERS.find { it.username.lowercase() == username.lowercase() }
+    }
+
     /** Yeni talep oluşturulduğunda kullanılan yer tutucu ID */
     const val NEW_REQUEST_ID = "new"
 

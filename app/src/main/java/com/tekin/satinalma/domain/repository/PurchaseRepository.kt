@@ -29,9 +29,15 @@ interface PurchaseRepository {
     /** Talep durumunu günceller */
     suspend fun updateStatus(requestId: String, status: MaterialStatus)
 
-    /** Şoförü talebe atar */
-    suspend fun assignDriver(requestId: String, driverId: String)
+    /** Şoförü talebe atar (plaka dahil) */
+    suspend fun assignDriver(requestId: String, driverId: String, licensePlate: String)
 
-    /** Plaka bilgisini günceller */
-    suspend fun updateLicensePlate(requestId: String, plate: String)
+    /** Talebi iptal eder */
+    suspend fun cancelRequest(requestId: String, reason: String?, cancelledBy: String)
+
+    /** Şoförden itiraz gönderir */
+    suspend fun submitObjection(requestId: String, driverId: String, reason: String)
+
+    /** Tüm şoförleri döner */
+    suspend fun getDrivers(): List<com.tekin.satinalma.domain.model.User>
 }
