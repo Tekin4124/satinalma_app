@@ -213,8 +213,6 @@ private fun PurchasingContent(
 }
 
 @Preview(showBackground = true, showSystemUi = true)
-
-@Preview(showBackground = true, showSystemUi = true)
 @Composable
 private fun PurchasingScreenPreview() {
     SatinalmaTheme {

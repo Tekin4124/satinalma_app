@@ -310,15 +310,59 @@ private fun LogisticsDetailContent(
         HorizontalDivider()
 
         // Salt okunur alanlar
-        AppTextField(label = stringResource(R.string.field_item_to_purchase), value = request.itemToPurchase, onValueChange = {}, readOnly = true)
-        AppTextField(label = stringResource(R.string.field_company_name), value = request.companyName, onValueChange = {}, readOnly = true)
-        AppTextField(label = stringResource(R.string.field_company_address), value = request.companyAddress, onValueChange = {}, readOnly = true, singleLine = false, maxLines = 3)
-        AppTextField(label = stringResource(R.string.field_contact_number), value = request.contactNumber, onValueChange = {}, readOnly = true)
-        AppTextField(label = stringResource(R.string.field_product_dimensions), value = request.productDimensions, onValueChange = {}, readOnly = true)
-        AppTextField(label = stringResource(R.string.field_product_weight), value = request.productWeight, onValueChange = {}, readOnly = true)
-        AppTextField(label = stringResource(R.string.field_purchase_date), value = request.purchaseDate, onValueChange = {}, readOnly = true)
+        AppTextField(
+            label = stringResource(R.string.field_item_to_purchase),
+            value = request.itemToPurchase,
+            onValueChange = {},
+            readOnly = true
+        )
+        AppTextField(
+            label = stringResource(R.string.field_company_name),
+            value = request.companyName,
+            onValueChange = {},
+            readOnly = true
+        )
+        AppTextField(
+            label = stringResource(R.string.field_company_address),
+            value = request.companyAddress,
+            onValueChange = {},
+            readOnly = true,
+            singleLine = false,
+            maxLines = 3
+        )
+        AppTextField(
+            label = stringResource(R.string.field_contact_number),
+            value = request.contactNumber,
+            onValueChange = {},
+            readOnly = true
+        )
+        AppTextField(
+            label = stringResource(R.string.field_product_dimensions),
+            value = request.productDimensions,
+            onValueChange = {},
+            readOnly = true
+        )
+        AppTextField(
+            label = stringResource(R.string.field_product_weight),
+            value = request.productWeight,
+            onValueChange = {},
+            readOnly = true
+        )
+        AppTextField(
+            label = stringResource(R.string.field_purchase_date),
+            value = request.purchaseDate,
+            onValueChange = {},
+            readOnly = true
+        )
         if (request.notes.isNotBlank()) {
-            AppTextField(label = stringResource(R.string.field_notes), value = request.notes, onValueChange = {}, readOnly = true, singleLine = false, maxLines = 3)
+            AppTextField(
+                label = stringResource(R.string.field_notes),
+                value = request.notes,
+                onValueChange = {},
+                readOnly = true,
+                singleLine = false,
+                maxLines = 3
+            )
         }
 
         HorizontalDivider()
