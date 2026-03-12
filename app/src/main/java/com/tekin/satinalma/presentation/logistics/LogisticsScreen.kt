@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -97,7 +96,6 @@ fun LogisticsScreen(
         topBar = {
             AppTopBar(
                 title = stringResource(R.string.logistics_title),
-                titleIcon = Icons.Default.LocalShipping,
                 currentUser = viewModel.getCurrentUser(),
                 notifications = viewModel.getNotifications(),
                 onLogout = onLogout,
